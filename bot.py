@@ -157,11 +157,12 @@ async def send_settings(message: Message):
     await message.answer("Выберите параметр для настройки пароля:", reply_markup=markup)
 
 
-# Обработка команды /start
+# Обработка команды /start с моментальной отправкой кнопок
 @dp.message_handler(commands=['start'])
 async def start_command(message: Message):
     logger.info(f"User {message.from_user.id} started the bot.")
     await message.answer("👋 Привет! Введите пароль для проверки его надежности:")
+    await send_settings(message)  # Показываем кнопки сразу после приветствия
 
 
 # Обработка команды /settings
