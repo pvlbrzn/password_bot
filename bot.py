@@ -56,9 +56,9 @@ def check_password_breach(password: str) -> bool:
 
 
 # Оценка времени взлома пароля
-def estimate_crack_time(password: str) -> float:
+def estimate_crack_time(password: str) -> tuple:
     if is_password_common(password):
-        return 0.001  # Практически мгновенный взлом
+        return 0.001, "секунд"  # Практически мгновенный взлом
 
     attempts_per_second = 1_000_000_000  # 1 миллиард попыток в секунду
 
@@ -78,7 +78,7 @@ def estimate_crack_time(password: str) -> float:
         charset_size += len(string.punctuation)  # количество спецсимволов
 
     if len(password) < 8:
-        return 0.1  # Пароль слишком короткий, сразу легко взломать
+        return 0.1, "секунд"  # Пароль слишком короткий, сразу легко взломать
 
     total_combinations = charset_size ** len(password)
     estimated_time = total_combinations / attempts_per_second  # Время в секундах
@@ -86,18 +86,19 @@ def estimate_crack_time(password: str) -> float:
     # Если время слишком большое, выводим в годах, месяцах или днях
     if estimated_time >= 31_536_000:  # Время больше года (31,536,000 секунд в году)
         estimated_time_in_years = estimated_time / 31_536_000  # Переводим в годы
-        return estimated_time_in_years
+        return estimated_time_in_years, "лет"
     elif estimated_time >= 2_592_000:  # Время больше месяца (2,592,000 секунд в месяце)
         estimated_time_in_months = estimated_time / 2_592_000  # Переводим в месяцы
-        return estimated_time_in_months
+        return estimated_time_in_months, "месяцев"
     elif estimated_time >= 86_400:  # Время больше дня (86,400 секунд в сутках)
         estimated_time_in_days = estimated_time / 86_400  # Переводим в дни
-        return estimated_time_in_days
-    return estimated_time  # Время в секундах
+        return estimated_time_in_days, "дней"
+
+    return estimated_time, "секунд"  # Время в секундах
 
 
 # Рекомендации по улучшению пароля
-def generate_recommendation(time_to_crack: float, password: str) -> str:
+def generate_recommendation(time_to_crack: float, time_unit: str, password: str) -> str:
     recommendations = []
     if is_password_common(password):
         return "⚠ Ваш пароль слишком распространён! Измените его."
@@ -124,14 +125,7 @@ def generate_recommendation(time_to_crack: float, password: str) -> str:
         return "⚠ Ваш пароль можно улучшить:\n- " + "\n- ".join(recommendations)
     else:
         # Форматируем время взлома
-        if time_to_crack >= 1:  # Если время в годах
-            return f"✅ Отличный пароль! Он может быть подобран за {time_to_crack:.2f} лет."
-        elif time_to_crack >= 30:  # Если время в месяцах
-            return f"✅ Отличный пароль! Он может быть подобран за {time_to_crack:.2f} месяцев."
-        elif time_to_crack >= 1:  # Если время в днях
-            return f"✅ Отличный пароль! Он может быть подобран за {time_to_crack:.2f} дней."
-        else:  # Если время в секундах
-            return f"✅ Отличный пароль! Он может быть подобран за {time_to_crack:.2f} секунд."
+        return f"✅ Отличный пароль! Он может быть подобран за {time_to_crack:.2f} {time_unit}."
 
 
 # Подсказка по созданию пароля
@@ -202,11 +196,12 @@ async def generate_password(message: Message):
 @dp.message_handler()
 async def check_password(message: Message):
     password = message.text
-    estimated_time = estimate_crack_time(password)
-    recommendation = generate_recommendation(estimated_time, password)
+    estimated_time, time_unit = estimate_crack_time(password)
+    recommendation = generate_recommendation(estimated_time, time_unit, password)
 
     # Отправляем сообщение о пароле
-    sent_message = await message.answer(f"⏳ Ваш пароль можно подобрать за: {estimated_time:.2f} сек.\n{recommendation}")
+    sent_message = await message.answer(
+        f"⏳ Ваш пароль можно подобрать за: {estimated_time:.2f} {time_unit}\n{recommendation}")
 
     # Сохраняем ID отправленного сообщения
     if message.from_user.id not in user_messages:
